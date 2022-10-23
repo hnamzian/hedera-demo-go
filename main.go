@@ -4,8 +4,8 @@ import (
 	"log"
 	"os"
 
-	"github.com/hashgraph/hedera-sdk-go/v2"
 	configs "github.com/hnamzian/hedera-example-go/configs"
+	hedera_client "github.com/hnamzian/hedera-example-go/hedera"
 )
 
 func main() {
@@ -15,27 +15,19 @@ func main() {
 
 	cfg.Load()
 
-	node := make(map[string]hedera.AccountID, 1)
-	node[cfg.NetworkNodeAddress] = cfg.NetworkNodeAccountID
-
-	client := hedera.ClientForNetwork(node)
-	client.SetMirrorNetwork([]string{cfg.MirrorNodeAddress})
-
-	client.SetOperator(cfg.AccountID, cfg.PrivateKey)
+	hederaConfigs := &hedera_client.HederaClientConfigs{
+		NetworkNodeAddress:   cfg.NetworkNodeAddress,
+		MirrorNodeAddress:    cfg.MirrorNodeAddress,
+		NetworkNodeAccountID: cfg.NetworkNodeAccountID,
+		OperatorAccountID:    cfg.AccountID,
+		OperatorPrivateKey:   cfg.PrivateKey,
+	}
+	hc := hedera_client.New(log, hederaConfigs)
 
 	// make a CreateAccount transaciton by operator account
-	tr, err := hedera.NewAccountCreateTransaction().
-		SetKey(cfg.PrivateKey).
-		SetInitialBalance(hedera.HbarFromTinybar(1000)).
-		Execute(client)
+	acc, err := hc.NewAccount()	
 	if err != nil {
-		log.Panicf("Unable to Create New Account %s", err)
+		log.Fatalf("Unable to create new Account %s", err)
 	}
-
-	receipt, err := tr.GetReceipt(client)
-	if err != nil {
-		log.Panicf("Unable to get transaction receipt %s", err)
-	}
-	newAccountId := receipt.AccountID
-	log.Printf("New Account created %s", newAccountId)
+	log.Printf("New Account created %s", acc)
 }
